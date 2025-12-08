@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Rocket MiniApp — Final</title>
+
+<style>
+:root{
+  --bg:#071029;
+  --accent:#1e90ff;
+  --fuel1:#ffcf5c;
+  --fuel2:#ff8a00;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;}
+body{
+  background: radial-gradient(circle at 20% 20%, #0b2a5a 0%, #041025 45%, #000814 100%);
+  color:#fff;
+  font-family: Inter, Roboto, Arial, sans-serif;
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  padding:10px;
+}
+
+/* container sized for Telegram miniapp */
+.app{
+  width:100%;
+  max-width:360px;
+  min-height:100vh;
+  padding:12px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+/* balance */
+.balance{
+  display:flex;
+  justify-content:space-between;
+  background:rgba(255,255,255,0.03);
+  padding:8px 12px;
+  border-radius:10px;
+}
+.balance .left{font-weight:700;font-size:14px;}
+.balance .val{
+  font-weight:800;font-size:18px;
+  background:linear-gradient(90deg,#6bf59a,#2fc36a);
+  -webkit-background-clip:text;color:transparent;
+}
+
+/* earn */
+.earn-area{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.02);padding:8px;border-radius:10px;}
+.earn-left{flex:1;display:flex;flex-direction:column;gap:6px;}
+.earn-title{font-size:13px;opacity:0.85;font-weight:700;}
+.earn-bar{width:100%;height:18px;background:rgba(255,255,255,0.04);border-radius:9px;overflow:hidden;}
+.earn-fill{height:100%;width:0%;background:linear-gradient(90deg,#5df588,#24a95c);transition:width .12s linear;}
+.earn-num{text-align:right;font-weight:800;font-size:15px;}
+.collect-btn{width:42px;height:42px;border-radius:10px;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;}
+
+/* main */
+.main{flex:1;display:flex;gap:12px;align-items:center;justify-content:center;}
+.fuel-column{width:62px;height:300px;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.fuel-percent{font-weight:800;font-size:18px;}
+.fuel-tank{width:42px;height:240px;background:rgba(255,255,255,0.02);border-radius:12px;position:relative;overflow:hidden;}
+.fuel-fill{position:absolute;bottom:0;width:100%;background:linear-gradient(180deg,var(--fuel1),var(--fuel2));height:100%;transition:height .15s linear;}
+.fuel-emoji{font-size:22px;}
+.rocket-wrap{width:200px;height:260px;display:flex;align-items:center;justify-content:center;}
+.rocket-emoji{font-size:110px;}
+
+/* controls */
+.controls{display:flex;gap:8px;margin-bottom:12px;}
+.btn{flex:1;padding:12px 8px;border-radius:10px;background:linear-gradient(180deg,#1b76ff,#155bd0);color:#fff;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.btn.secondary{background:linear-gradient(180deg,#2b2b2b,#1e1e1e);}
+
+/* bottom black notification (над кнопками) */
+.bottom-notif{
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:92px; /* чуть выше кнопок */
+  background:#111;
+  color:#fff;
+  padding:10px 14px;
+  border-radius:10px;
+  font-weight:800;
+  font-size:15px;
+  opacity:0;
+  transition:opacity .12s;
+  z-index:9999;
+  pointer-events:none;
+}
+.bottom-notif.show{opacity:1;}
+
+/* withdraw modal */
+#withdrawScreen{
+  position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(4px);display:none;justify-content:center;align-items:flex-start;padding:20px;
+}
+.withdraw-box{width:100%;max-width:360px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px;}
+.w-title{font-size:18px;font-weight:800;text-align:center;position:relative;}
+.close-x{position:absolute;right:0;top:0;font-size:20px;cursor:pointer;padding:4px 8px;}
+.tabs{display:flex;gap:8px;}
+.tab{flex:1;padding:8px;text-align:center;border-radius:10px;background:rgba(255,255,255,0.06);cursor:pointer;font-weight:700;}
+.tab.active{background:rgba(30,144,255,0.25);border:1px solid rgba(30,144,255,0.35);}
+.screen{display:none;flex-direction:column;gap:8px;}
+.screen.active{display:flex;}
+.label{font-size:14px;opacity:.85;}
+.value{font-weight:800;font-size:16px;}
+input{width:100%;padding:10px;border-radius:10px;border:none;background:rgba(255,255,255,0.08);color:#fff;font-size:16px;}
+.btn-main{width:100%;padding:12px;border-radius:10px;background:var(--accent);color:#fff;font-weight:800;text-align:center;cursor:pointer;}
+.msg{padding:10px;border-radius:10px;text-align:center;font-weight:800;display:none;}
+.msg.err{background:rgba(255,0,0,0.25);} 
+.msg.ok{background:rgba(0,255,120,0.2);} 
+.history-item{background:rgba(255,255,255,0.06);padding:10px;border-radius:10px;font-size:14px; margin-bottom:0.1cm;}
+#historyList{max-height:300px;overflow-y:auto;padding-right:4px;}
+#historyList::-webkit-scrollbar{width:4px;}#historyList::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.2);border-radius:4px;}
+/* responsive tweaks */
+@media (max-width:420px){ .rocket-emoji{font-size:96px;} .bottom-notif{bottom:88px;} }
+</style>
+</head>
+<body>
+
+<div class="app" id="gameScreen">
+
+  <div class="balance">
+    <div class="left">Баланс</div>
+    <div class="val" id="balanceVal">0.00</div>
+  </div>
+
+  <div class="earn-area">
+    <div class="earn-left">
+      <div class="earn-title">Накоплено</div>
+      <div class="earn-bar"><div class="earn-fill" id="earnFill"></div></div>
+      <div class="earn-num" id="earnNum">0.0 / 50</div>
+    </div>
+
+    <div class="collect-btn" id="collectBtn">📥</div>
+  </div>
+
+  <div class="main">
+    <div class="fuel-column" aria-hidden="false">
+      <div class="fuel-percent" id="fuelPercent">100%</div>
+      <div class="fuel-tank" aria-hidden="true">
+        <div class="fuel-fill" id="fuelFill" style="height:100%"></div>
+        <div class="fuel-wave" id="fuelWave"></div>
+      </div>
+      <div class="fuel-emoji">⛽</div>
+    </div>
+
+    <div class="rocket-wrap" aria-hidden="false">
+      <div class="rocket-emoji" id="rocketEmoji">🚀</div>
+    </div>
+
+    <div style="width:62px"></div>
+  </div>
+
+  <div class="controls">
+    <div class="btn" id="startBtn">▶️</div>
+    <div class="btn secondary" id="refuelBtn">⛽</div>
+    <div class="btn" id="openWithdraw">💸</div>
+  </div>
+
+</div>
+
+<!-- bottom black notification -->
+<div id="bottomNotif" class="bottom-notif"></div>
+
+<!-- withdraw modal -->
+<div id="withdrawScreen">
+  <div class="withdraw-box">
+
+    <div class="w-title">Play Game <span class="close-x" id="closeWithdraw">✖</span></div>
+
+    <div class="tabs">
+      <div class="tab active" id="wTab1">Вывод</div>
+      <div class="tab" id="wTab2">История</div>
+    </div>
+
+    <div class="screen active" id="wScreen1">
+      <div><span class="label">Макс:</span> <span class="value">100000</span></div>
+      <div><span class="label">Мин:</span> <span class="value">10000</span></div>
+      <div><span class="label">Курс:</span> <span class="value">10000 монет = 0.1 TON</span></div>
+
+      <div class="label">Введите монеты:</div>
+      <input id="wInput" type="number" placeholder="Например: 250" />
+
+      <div class="label">TON сумма:</div>
+      <div class="value" id="tonValue">0</div>
+
+      <div class="label">TON адрес:</div>
+      <input id="wAddr" placeholder="EQ...." />
+
+      <div class="btn-main" id="sendReq">Создать заявку</div>
+
+      <div class="msg ok" id="msgOK">Заявка успешно отправлена</div>
+      <div class="msg err" id="msgERR">Ошибка! Заполните корректно</div>
+    </div>
+
+    <div class="screen" id="wScreen2">
+      <div class="label">История:</div>
+      <div id="historyList"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ----------------- Parameters -----------------
+let fuel = 100;           // %
+let earned = 0.0;         // накопитель (0..50)
+let balance = 0.00;       // баланс
+const earnCap = 50.0;
+
+// 100% = 10 minutes = 600 sec
+const consumePerSec = 100 / 600;
+const earnPerSec = earnCap / 600;
+
+let running = false;
+let lastTs = null;
+
+// ----------------- Elements -----------------
+const fuelFill = document.getElementById('fuelFill');
+const fuelPercent = document.getElementById('fuelPercent');
+const earnFill = document.getElementById('earnFill');
+const earnNum = document.getElementById('earnNum');
+const balanceVal = document.getElementById('balanceVal');
+
+const startBtn = document.getElementById('startBtn');
+const refuelBtn = document.getElementById('refuelBtn');
+const collectBtn = document.getElementById('collectBtn');
+
+const bottomNotif = document.getElementById('bottomNotif');
+
+/* Withdraw elements */
+const withdrawScreen = document.getElementById('withdrawScreen');
+const openWithdraw = document.getElementById('openWithdraw');
+const closeWithdraw = document.getElementById('closeWithdraw');
+
+const wTab1 = document.getElementById('wTab1');
+const wTab2 = document.getElementById('wTab2');
+const wScreen1 = document.getElementById('wScreen1');
+const wScreen2 = document.getElementById('wScreen2');
+
+const wInput = document.getElementById('wInput');
+const tonValue = document.getElementById('tonValue');
+const wAddr = document.getElementById('wAddr');
+const sendReq = document.getElementById('sendReq');
+const msgOK = document.getElementById('msgOK');
+const msgERR = document.getElementById('msgERR');
+const historyList = document.getElementById('historyList');
+
+// ----------------- Notifications -----------------
+let bottomTimer = null;
+function showBottom(text, timeout = 1000){
+  clearTimeout(bottomTimer);
+  bottomNotif.textContent = text;
+  bottomNotif.classList.add('show');
+  bottomTimer = setTimeout(()=> bottomNotif.classList.remove('show'), timeout);
+}
+
+let msgTimer = null;
+function showMsg(el, text, timeout=2000){
+  clearTimeout(msgTimer);
+  el.textContent = text;
+  el.style.display = 'block';
+  msgTimer = setTimeout(()=> el.style.display = 'none', timeout);
+}
+
+// ----------------- UI update -----------------
+function updateUI(){
+  fuelFill.style.height = Math.max(0, Math.min(100, fuel)) + '%';
+  fuelPercent.textContent = Math.round(Math.max(0, Math.min(100, fuel))) + '%';
+
+  let perc = (earned / earnCap) * 100;
+  earnFill.style.width = Math.max(0, Math.min(100, perc)) + '%';
+  earnNum.textContent = earned.toFixed(1) + ' / 50';
+
+  balanceVal.textContent = balance.toFixed(2);
+}
+
+// ----------------- Game loop -----------------
+function tick(ts){
+  if(!lastTs) lastTs = ts;
+  const dt = (ts - lastTs) / 1000;
+  lastTs = ts;
+
+  if(running && fuel > 0){
+    fuel -= consumePerSec * dt;
+    if(fuel <= 0){
+      fuel = 0;
+      running = false;
+      showBottom('Бензин закончился', 1000);
+      startBtn.textContent = '▶️';
+    } else {
+      if(earned < earnCap){
+        earned += earnPerSec * dt;
+        if(earned > earnCap) earned = earnCap;
+      }
+    }
+  }
+
+  updateUI();
+  requestAnimationFrame(tick);
+}
+
+// ----------------- Controls -----------------
+startBtn.addEventListener('click', ()=>{
+  if(fuel <= 0){
+    showBottom('Нет бензина', 1000);
+    return;
+  }
+  running = !running;
+  startBtn.textContent = running ? '⏸' : '▶️';
+});
+
+refuelBtn.addEventListener('click', ()=>{
+  fuel = Math.min(100, fuel + 30);
+  updateUI();
+  showBottom('+30% бензина', 900);
+});
+
+collectBtn.addEventListener('click', ()=>{
+  if(earned > 0.001){
+    balance = +(balance + earned).toFixed(2);
+    earned = 0;
+    updateUI();
+    showBottom('Монеты собраны', 900);
+  }
+});
+
+// ----------------- Withdraw modal -----------------
+openWithdraw.addEventListener('click', ()=> { withdrawScreen.style.display = 'flex'; });
+closeWithdraw.addEventListener('click', ()=> { withdrawScreen.style.display = 'none'; });
+
+wTab1.addEventListener('click', ()=>{ wTab1.classList.add('active'); wTab2.classList.remove('active'); wScreen1.classList.add('active'); wScreen2.classList.remove('active'); });
+wTab2.addEventListener('click', ()=>{ wTab2.classList.add('active'); wTab1.classList.remove('active'); wScreen2.classList.add('active'); wScreen1.classList.remove('active'); });
+
+wInput.addEventListener('input', ()=>{ const v = +wInput.value; tonValue.textContent = v ? (v/1000).toFixed(3) : '0'; });
+
+let history = [];
+
+sendReq.addEventListener('click', ()=>{
+  msgOK.style.display = 'none';
+  msgERR.style.display = 'none';
+
+  const coins = +wInput.value;
+  const addr = wAddr.value.trim();
+
+  if(!coins || coins < 10000){
+    showMsg(msgERR, 'Нужно минимум 10000 монет', 1800);
+    return;
+  }
+  if(coins > 100000){
+    showMsg(msgERR, 'Максимум 100000 монет', 1800);
+    return;
+  }
+  if(coins > balance){
+    showMsg(msgERR, 'Недостаточно средств', 1800);
+    return;
+  }
+  if(!addr || !addr.startsWith('EQ')){
+    showMsg(msgERR, 'Неверный TON адрес', 1800);
+    return;
+  }
+
+  // success
+  balance = +(balance - coins).toFixed(2);
+  history.unshift({coins, addr, time: new Date().toLocaleString()});
+  historyList.innerHTML = history.map(h=>`<div class='history-item'>${h.time}<br>Монет: ${h.coins}<br>Адрес: ${h.addr}</div>`).join('');
+  showMsg(msgOK, 'Заявка успешно отправлена', 1800);
+
+  wInput.value = ''; wAddr.value = ''; tonValue.textContent = '0';
+  updateUI();
+});
+
+updateUI();
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
