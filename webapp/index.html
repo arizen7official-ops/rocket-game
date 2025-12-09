@@ -4,6 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Rocket MiniApp — Final</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+Telegram.WebApp.ready();
 
 <style>
 :root{
@@ -326,8 +329,16 @@ collectBtn.addEventListener('click', ()=>{
     earned = 0;
     updateUI();
     showBottom('Монеты собраны', 900);
+
+    // ВОТ ЭТО ДОБАВЛЯЕМ
+    if (window.Telegram && Telegram.WebApp) {
+      Telegram.WebApp.sendData(JSON.stringify({
+        balance: balance
+      }));
+    }
   }
 });
+
 
 // ----------------- Withdraw modal -----------------
 openWithdraw.addEventListener('click', ()=> { withdrawScreen.style.display = 'flex'; });
